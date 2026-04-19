@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # OpenRouterBot Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/a-prs/OpenRouterBot/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/semcat92-wq/OpenRouterBot/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh
 
 INSTALL_DIR="/opt/openrouterbot"
-REPO_URL="https://github.com/a-prs/OpenRouterBot.git"
+REPO_URL="https://github.com/semcat92-wq/OpenRouterBot.git"
 SERVICE_NAME="openrouterbot"
 NODE_MIN_VERSION=18
 
@@ -22,7 +22,7 @@ if [ ! -t 0 ]; then
     echo ""
     echo "  Run this instead:"
     echo ""
-    echo "    curl -fsSL https://raw.githubusercontent.com/a-prs/OpenRouterBot/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh"
+    echo "    curl -fsSL https://raw.githubusercontent.com/semcat92-wq/OpenRouterBot/main/install.sh -o /tmp/install.sh && sudo bash /tmp/install.sh"
     echo ""
     exit 1
 fi
