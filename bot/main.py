@@ -181,6 +181,80 @@ async def cmd_models(message: Message):
     await message.reply(text, parse_mode=ParseMode.HTML)
 
 
+@dp.message(Command("update"))
+async def cmd_update(message: Message):
+    if not is_admin(message):
+        return
+
+    status_msg = await message.reply("Checking for updates...")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "fetch", "origin", "main",
+            cwd=str(config.PROJECT_ROOT),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+
+        proc = await asyncio.create_subprocess_exec(
+            "git", "rev-list", "--count", "HEAD..origin/main",
+            cwd=str(config.PROJECT_ROOT),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        behind = int(stdout.decode().strip() or "0")
+
+        if behind == 0:
+            await status_msg.edit_text("Already up to date.")
+            return
+
+        await status_msg.edit_text(
+            f"Found {behind} new commit(s). Updating...",
+        )
+
+        proc = await asyncio.create_subprocess_exec(
+            "git", "pull", "origin", "main",
+            cwd=str(config.PROJECT_ROOT),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            error = stderr.decode()[:500]
+            await status_msg.edit_text(f"Update failed:\n<pre>{error}</pre>", parse_mode=ParseMode.HTML)
+            return
+
+        proc = await asyncio.create_subprocess_exec(
+            str(config.PROJECT_ROOT / ".venv" / "bin" / "pip"),
+            "install", "-q", "-r",
+            str(config.PROJECT_ROOT / "bot" / "requirements.txt"),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+
+        await status_msg.edit_text(
+            f"Updated ({behind} commits). Restarting...",
+        )
+
+        proc = await asyncio.create_subprocess_exec(
+            "sudo", "systemctl", "restart", "openrouterbot",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+
+    except Exception as e:
+        logger.error(f"Update failed: {e}", exc_info=True)
+        try:
+            await status_msg.edit_text(f"Update error: {e}")
+        except Exception:
+            pass
+
+
 @dp.callback_query(F.data == "menu")
 async def cb_menu(callback: CallbackQuery):
     if not is_admin_cb(callback):
@@ -508,6 +582,7 @@ async def setup_bot_commands():
         BotCommand(command="new", description="➕ Новая сессия"),
         BotCommand(command="status", description="📊 Статус системы"),
         BotCommand(command="models", description="🧠 Доступные модели"),
+        BotCommand(command="update", description="🔄 Обновить бота"),
     ]
     await bot.set_my_commands(commands)
 
