@@ -173,12 +173,28 @@ async def cmd_status(message: Message):
 async def cmd_models(message: Message):
     if not is_admin(message):
         return
-    
-    models = config.get_model_list()
-    text = "<b>Available models:</b>\n\n" + "\n".join(f"• {m}" for m in models)
-    text += f"\n\nCurrent: <code>{config.OPENROUTER_MODEL}</code>"
-    
-    await message.reply(text, parse_mode=ParseMode.HTML)
+
+    models_data = config.get_model_list()
+    free_models = models_data["free"]
+
+    text = "<b>🆓 Free Models:</b>\n"
+    buttons = []
+    for model_id, info in free_models.items():
+        text += f"\n• <code>{info['name']}</code> — {info['desc']}"
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{'✓ ' if model_id == config.OPENROUTER_MODEL else ''}{info['name']}",
+                callback_data=f"model:{model_id}",
+            )
+        ])
+
+    text += f"\n\n<b>Current:</b> <code>{config.OPENROUTER_MODEL}</code>"
+
+    await message.reply(
+        text,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+    )
 
 
 @dp.message(Command("update"))
@@ -426,6 +442,22 @@ async def cb_status(callback: CallbackQuery):
         return
     await _send_status(callback.message.chat.id, edit_message=callback.message)
     await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("model:"))
+async def cb_model(callback: CallbackQuery):
+    if not is_admin_cb(callback):
+        return
+
+    model_id = callback.data.split(":", 1)[1]
+    config.set_env_var("OPENROUTER_MODEL", model_id)
+    config.reload_config()
+
+    await callback.message.edit_text(
+        f"✅ Model changed to: <code>{model_id}</code>",
+        parse_mode=ParseMode.HTML,
+    )
+    await callback.answer(f"Model: {model_id}")
 
 
 @dp.callback_query(F.data == "noop")

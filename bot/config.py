@@ -23,16 +23,24 @@ DB_PATH = PROJECT_ROOT / "data" / "bot.db"
 MESSAGE_QUEUE_MAX = 5
 SESSION_IDLE_TIMEOUT_HOURS = 48
 
-_openrouter_models = [
-    "anthropic/claude-3.5-sonnet",
-    "anthropic/claude-3-haiku",
-    "qwen/qwen-2.5-72b-instruct",
-    "qwen/qwen-2.5-32b-instruct",
-    "google/gemini-2.0-flash-exp",
-    "meta-llama/llama-3.3-70b-instruct",
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
-]
+FREE_MODELS = {
+    "deepseek/deepseek-r1": {"name": "DeepSeek R1", "context": "131K", "desc": "Best for reasoning"},
+    "qwen/qwen3-235b-instruct:free": {"name": "Qwen 3 235B", "context": "131K", "desc": "Best general"},
+    "qwen/qwen3-coder:free": {"name": "Qwen 3 Coder", "context": "131K", "desc": "Best for coding"},
+    "meta-llama/llama-3.3-70b-instruct": {"name": "Llama 3.3 70B", "context": "131K", "desc": "General purpose"},
+    "nvidia/Nemotron-3-Super-4b-chat": {"name": "Nemotron 3 Super", "context": "4K", "desc": "Fast & small"},
+    "google/gemma-4-26b-a4b-it:free": {"name": "Gemma 4 26B", "context": "262K", "desc": "Google model"},
+    "mistral-small-3.1-24b": {"name": "Mistral Small 3.1", "context": "131K", "desc": "Balanced"},
+    "openrouter/free": {"name": "Free Router", "context": "200K", "desc": "Auto-select best free"},
+}
+
+PAID_MODELS = {
+    "anthropic/claude-3.5-sonnet": {"name": "Claude 3.5 Sonnet", "context": "200K", "desc": "Best overall"},
+    "anthropic/claude-3-haiku": {"name": "Claude 3 Haiku", "context": "200K", "desc": "Fast"},
+    "qwen/qwen-2.5-72b-instruct": {"name": "Qwen 2.5 72B", "context": "32K", "desc": "Coding"},
+    "openai/gpt-4o": {"name": "GPT-4o", "context": "128K", "desc": "OpenAI best"},
+    "openai/gpt-4o-mini": {"name": "GPT-4o Mini", "context": "64K", "desc": "Fast & cheap"},
+}
 
 
 def set_env_var(key: str, value: str):
@@ -60,6 +68,11 @@ def reload_config():
     load_dotenv(ENV_PATH, override=True)
 
 
-def get_model_list() -> list:
-    """Get list of available OpenRouter models."""
-    return _openrouter_models
+def get_model_list() -> dict:
+    """Get dict of available OpenRouter models by category."""
+    return {"free": FREE_MODELS, "paid": PAID_MODELS}
+
+
+def get_all_models() -> list:
+    """Get flat list of all model IDs."""
+    return list(FREE_MODELS.keys()) + list(PAID_MODELS.keys())
