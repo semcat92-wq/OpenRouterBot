@@ -180,7 +180,8 @@ Type=simple
 User=openrouterbot
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/.venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=$INSTALL_DIR/.venv/bin/python -m bot.main
+Environment="PYTHONPATH=$INSTALL_DIR"
+ExecStart=$INSTALL_DIR/.venv/bin/python bot/main.py
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
