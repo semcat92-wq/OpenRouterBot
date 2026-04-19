@@ -452,15 +452,23 @@ async def cb_model(callback: CallbackQuery):
 
     model_id = callback.data.split(":", 1)[1].replace("-", "/")
     config.set_env_var("OPENROUTER_MODEL", model_id)
-    config.reload_config()
 
-    logger.info(f"Model changed to: {model_id}")
+    logger.info(f"Model changed to: {model_id}, restarting...")
 
     await callback.message.edit_text(
-        f"✅ Model changed to: <code>{model_id}</code>",
+        f"✅ Model changed to: <code>{model_id}</code>\n\nRestarting bot...",
         parse_mode=ParseMode.HTML,
     )
     await callback.answer(f"Model: {model_id}")
+
+    await callback.message.bot.session.close()
+
+    proc = await asyncio.create_subprocess_exec(
+        "sudo", "systemctl", "restart", "openrouterbot",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.communicate()
 
 
 @dp.callback_query(F.data == "noop")
