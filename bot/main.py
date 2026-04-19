@@ -476,6 +476,105 @@ async def cb_noop(callback: CallbackQuery):
     await callback.answer("Working...")
 
 
+@dp.message(Command("shell"))
+async def cmd_shell(message: Message):
+    if not is_admin(message):
+        return
+
+    cmd = message.text.replace("/shell", "").strip()
+    if not cmd:
+        await message.reply("Usage: /shell <command>\nExample: /shell apt update")
+        return
+
+    status_msg = await message.reply(f"⏳ Running: <code>{cmd}</code>", parse_mode=ParseMode.HTML)
+
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+
+        result = stdout.decode()[:3000] if stdout else ""
+        error = stderr.decode()[:1000] if stderr else ""
+
+        response = ""
+        if result:
+            response += f"<b>Output:</b>\n<pre>{result}</pre>"
+        if error:
+            response += f"\n<b>Error:</b>\n<pre>{error}</pre>"
+        if not result and not error:
+            response = "(no output)"
+
+        await status_msg.edit_text(response, parse_mode=ParseMode.HTML)
+
+    except asyncio.TimeoutError:
+        await status_msg.edit_text("⏱ Timeout after 120s", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await status_msg.edit_text(f"Error: {e}", parse_mode=ParseMode.HTML)
+
+
+@dp.message(Command("install"))
+async def cmd_install(message: Message):
+    if not is_admin(message):
+        return
+
+    url = message.text.replace("/install", "").strip()
+    if not url:
+        await message.reply(
+            "Usage: /install <url>\n"
+            "Example: /install https://raw.githubusercontent.com/anten-ka/.../setup.sh"
+        )
+        return
+
+    status_msg = await message.reply(f"⏳ Installing script...", parse_mode=ParseMode.HTML)
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "wget", "-O", "/tmp/install_script.sh", url,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            await status_msg.edit_text(f"Download failed: {stderr.decode()[:500]}", parse_mode=ParseMode.HTML)
+            return
+
+        proc = await asyncio.create_subprocess_exec(
+            "chmod", "+x", "/tmp/install_script.sh",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+
+        await status_msg.edit_text("✅ Script downloaded. Running with sudo...", parse_mode=ParseMode.HTML)
+
+        proc = await asyncio.create_subprocess_exec(
+            "sudo", "bash", "/tmp/install_script.sh",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+
+        result = stdout.decode()[:3000] if stdout else ""
+        error = stderr.decode()[:1000] if stderr else ""
+
+        response = ""
+        if result:
+            response += f"<b>Output:</b>\n<pre>{result}</pre>"
+        if error:
+            response += f"\n<b>Error:</b>\n<pre>{error}</pre}"
+
+        await status_msg.edit_text(response if response else "✅ Done!", parse_mode=ParseMode.HTML)
+
+    except asyncio.TimeoutError:
+        await status_msg.edit_text("⏱ Timeout after 5 minutes", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await status_msg.edit_text(f"Error: {e}", parse_mode=ParseMode.HTML)
+
+
 @dp.message(F.chat.id == ADMIN_CHAT_ID)
 async def handle_message(message: Message):
     """Main handler: extract text -> route to session -> run OpenRouter."""
@@ -626,6 +725,8 @@ async def setup_bot_commands():
         BotCommand(command="status", description="📊 Статус системы"),
         BotCommand(command="models", description="🧠 Доступные модели"),
         BotCommand(command="update", description="🔄 Обновить бота"),
+        BotCommand(command="shell", description="💻 Выполнить команду"),
+        BotCommand(command="install", description="📥 Установить скрипт"),
     ]
     await bot.set_my_commands(commands)
 
