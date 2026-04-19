@@ -181,10 +181,11 @@ async def cmd_models(message: Message):
     buttons = []
     for model_id, info in free_models.items():
         text += f"\n• <code>{info['name']}</code> — {info['desc']}"
+        cb_data = model_id.replace("/", "-")
         buttons.append([
             InlineKeyboardButton(
                 text=f"{'✓ ' if model_id == config.OPENROUTER_MODEL else ''}{info['name']}",
-                callback_data=f"model:{model_id}",
+                callback_data=f"model:{cb_data}",
             )
         ])
 
@@ -449,9 +450,11 @@ async def cb_model(callback: CallbackQuery):
     if not is_admin_cb(callback):
         return
 
-    model_id = callback.data.split(":", 1)[1]
+    model_id = callback.data.split(":", 1)[1].replace("-", "/")
     config.set_env_var("OPENROUTER_MODEL", model_id)
     config.reload_config()
+
+    logger.info(f"Model changed to: {model_id}")
 
     await callback.message.edit_text(
         f"✅ Model changed to: <code>{model_id}</code>",
